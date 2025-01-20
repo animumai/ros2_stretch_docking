@@ -1,25 +1,35 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ros2_nav2_docking</name>
+  <name>ros2_stretch_docking</name>
   <version>0.1.0</version>
-  <description>Stretch robot docking package with Nav2 and ArUco detection</description>
-  <maintainer email="viktornfa@gmail.com">Victor Nan Fernandez-Ayala</maintainer>
-  <license>TODO: License declaration</license>
+  <description>A docking solution and plugin for the Stretch robot</description>
+  <maintainer email="victor@animum.ai">Victor Nan Fernandez-Ayala</maintainer>
+  <license>Apache-2.0</license>
 
-  <depend>rclpy</depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <depend>angles</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
+  <depend>rclcpp_lifecycle</depend>
   <depend>nav2_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>pluginlib</depend>
+  <depend>opennav_docking_core</depend>
   <depend>tf2_ros</depend>
-  <depend>opennav_docking</depend>
+  <depend>rclpy</depend>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
 
   <export>
-    <build_type>ament_python</build_type>
+    <build_type>ament_cmake</build_type>
+    <opennav_docking_core plugin="${prefix}/plugin.xml" />
   </export>
 </package>

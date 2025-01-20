@@ -13,14 +13,16 @@ docking_server:
     dock_prestaging_tolerance: 0.5
 
     # Types of docks
-    dock_plugins: ['stretch_dock']
-    stretch_dock:
+    dock_plugins: ['nova_carter_dock']
+    nova_carter_dock:
+      # plugin: 'nova_carter_dock::NovaCarterChargingDock'
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
       staging_x_offset: -0.7
       use_external_detection_pose: true
-      use_battery_status: true
+      use_battery_status: false # true
       use_stall_detection: false
+
       external_detection_timeout: 1.0
       external_detection_translation_x: -0.18
       external_detection_translation_y: 0.0
@@ -32,7 +34,7 @@ docking_server:
     # Dock instances
     docks: ['home_dock']
     home_dock:
-      type: 'stretch_dock'
+      type: 'nova_carter_dock'
       frame: map
       pose: [0.0, 0.0, 0.0]
 

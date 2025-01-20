@@ -1,3 +1,0 @@
-marker_length: 0.11  # 110 mm
-camera_frame: "camera_link"
-aruco_dictionary: "DICT_4X4_50"
