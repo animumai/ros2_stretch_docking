@@ -3,9 +3,11 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from nav2_common.launch import RewrittenYaml
+from launch.conditions import IfCondition
 
 
 def generate_launch_description():
@@ -42,7 +44,7 @@ def generate_launch_description():
             'map',
             default_value=os.path.join(
                 get_package_share_directory(
-                    'stretch_gz_sim'),
+                    'ros2_simulator_stretch'),
                 'maps', 'supermarket.yaml'
             ),
             description='Full path to map file to load'),
@@ -79,7 +81,7 @@ def generate_launch_description():
     launch_rviz = LaunchConfiguration('launch_rviz')
     image = LaunchConfiguration('image')
     camera_info = LaunchConfiguration('camera_info')
-    nova_carter_dock_launch_dir = os.path.join(
+    ros2_stretch_docking_launch_dir = os.path.join(
         get_package_share_directory('ros2_stretch_docking'), 'launch')
 
     param_substitutions = {
@@ -133,7 +135,7 @@ def generate_launch_description():
 
     dock_detection_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
-            nova_carter_dock_launch_dir, 'isaac_apriltag_detection_pipeline.launch.py')),
+            ros2_stretch_docking_launch_dir, 'aruco_detection_pipeline.launch.py')),
         launch_arguments={
             'launch_rviz': launch_rviz,
             'image': image,
@@ -141,9 +143,24 @@ def generate_launch_description():
         }.items()
     )
 
+    default_rviz_config_path = os.path.join(
+        get_package_share_directory('nav2_bringup'),
+        'rviz', 'nav2_default_view.rviz'
+    )
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', default_rviz_config_path],
+        output='screen',
+        condition=IfCondition(launch_rviz)
+    )
+
     return launch.LaunchDescription(launch_args + [
         dock_detection_launch,
         nav2_bringup_launch,
         docking_server,
-        lifecycle_manager
+        lifecycle_manager,
+        rviz_node
     ])

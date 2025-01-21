@@ -3,7 +3,6 @@ project(ros2_stretch_docking)
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
-find_package(angles REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp_action REQUIRED)
@@ -16,15 +15,17 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(pluginlib REQUIRED)
 find_package(opennav_docking_core REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(image_transport REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(tf2 REQUIRED)
 
 # potentially replace with nav2_common, nav2_package()
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall -Wextra -Wpedantic -Werror -Wdeprecated -fPIC -Wshadow -Wnull-dereference)
 
 set(dependencies
-  angles
   rclcpp
   rclcpp_action
   rclcpp_lifecycle
@@ -36,8 +37,11 @@ set(dependencies
   geometry_msgs
   tf2_ros
   tf2_geometry_msgs
-  pluginlib
   opennav_docking_core
+  cv_bridge
+  image_transport
+  OpenCV
+  tf2
 )
 
 add_executable(dock_pose_publisher src/dock_pose_publisher.cpp)

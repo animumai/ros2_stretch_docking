@@ -10,7 +10,6 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
-  <depend>angles</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_action</depend>
   <depend>rclcpp_lifecycle</depend>
@@ -18,10 +17,13 @@
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>pluginlib</depend>
   <depend>opennav_docking_core</depend>
   <depend>tf2_ros</depend>
   <depend>rclpy</depend>
+  <depend>OpenCV</depend>
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
+  <depend>tf2</depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
@@ -30,6 +32,5 @@
 
   <export>
     <build_type>ament_cmake</build_type>
-    <opennav_docking_core plugin="${prefix}/plugin.xml" />
   </export>
 </package>

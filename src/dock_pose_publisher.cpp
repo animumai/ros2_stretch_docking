@@ -1,71 +1,215 @@
-// Copyright (c) 2024 Open Navigation LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-#include "isaac_ros_apriltag_interfaces/msg/april_tag_detection_array.hpp"
+#include "image_transport/image_transport.hpp"
+#include "cv_bridge/cv_bridge.h"
+
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/camera_info.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-using std::placeholders::_1;
+#include <opencv2/opencv.hpp>
+#include <opencv2/aruco.hpp>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 
+/**
+ * @class DockPosePublisher
+ * @brief Single node that:
+ *   1) Subscribes to camera image (and optional camera info).
+ *   2) Detects ArUco markers using OpenCV.
+ *   3) Publishes pose of the first (or a specific) marker ID.
+ */
 class DockPosePublisher : public rclcpp::Node
 {
-  public:
-    DockPosePublisher()
-    : Node("dock_pose_publisher")
-    {
-      subscription_ = this->create_subscription<isaac_ros_apriltag_interfaces::msg::AprilTagDetectionArray>(
-      "tag_detections", 10, std::bind(&DockPosePublisher::detectionCallback, this, _1));
-      publisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("detected_dock_pose", 10);
-      
-      // If you don't expect multiple detections in a scene, use the only apriltag
-      use_first_detection_ = this->declare_parameter("use_first_detection", true);
+public:
+  DockPosePublisher()
+  : Node("dock_pose_publisher")
+  {
+    // Declare and read parameters
+    dictionary_id_      = this->declare_parameter<std::string>("dictionary_id", "6x6_250");
+    marker_size_        = this->declare_parameter<double>("marker_size", 0.11);  // 110 mm = 0.11 m
+    use_first_detection_ = this->declare_parameter<bool>("use_first_detection", true);
+    dock_tag_id_        = this->declare_parameter<int>("dock_tag_id", 245);
 
-      // If you expect multiple detections in a scene, specify which you want to use
-      // (default here is included in media/ directory)
-      dock_tag_family_ = this->declare_parameter("dock_tag_family", "tag36h11");
-      dock_tag_id_ = this->declare_parameter("dock_tag_id", 585);
+    // Prepare ArUco objects
+    dictionary_ = cv::aruco::getPredefinedDictionary(getDictionaryId(dictionary_id_));
+    detector_params_ = cv::aruco::DetectorParameters::create();
+
+    // Publishers
+    // Pose publisher: "detected_dock_pose"
+    pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("detected_dock_pose", 10);
+
+    // Subscribers
+    // (1) Image subscription (using image_transport for convenience)
+    image_sub_ = image_transport::create_subscription(
+      this, 
+      "/camera/color/image_raw",
+      std::bind(&DockPosePublisher::imageCallback, this, std::placeholders::_1),
+      "raw"  // Transport type (raw, compressed, etc.)
+    );
+
+    // (2) Camera info subscription (needed for 3D pose estimation)
+    camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
+      "/camera/color/camera_info", 10,
+      std::bind(&DockPosePublisher::cameraInfoCallback, this, std::placeholders::_1));
+
+    RCLCPP_INFO(this->get_logger(), "DockPosePublisher node started");
+  }
+
+private:
+  // This flag tracks whether we’ve *already* logged a detection message
+  bool detection_active_ = false;
+
+  // Called whenever a camera image arrives
+  void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr & msg)
+  {
+    // Convert ROS Image -> OpenCV Mat
+    cv_bridge::CvImageConstPtr cv_ptr;
+    try {
+      cv_ptr = cv_bridge::toCvShare(msg, msg->encoding);
+    } catch (cv_bridge::Exception& e) {
+      RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+      return;
     }
 
-  private:
-    void detectionCallback(const isaac_ros_apriltag_interfaces::msg::AprilTagDetectionArray::SharedPtr msg)
-    {
-      geometry_msgs::msg::PoseStamped p;
-      for (unsigned int i = 0; i != msg->detections.size(); i++) {
-        if (!use_first_detection_) {
-          if (msg->detections[i].family == dock_tag_family_ && msg->detections[i].id == dock_tag_id_) {
-            p.header = msg->header;
-            p.pose = msg->detections[i].pose.pose.pose;
-            publisher_->publish(p);
+    // Detect ArUco markers
+    std::vector<int> ids;
+    std::vector<std::vector<cv::Point2f>> corners, rejected;
+    cv::aruco::detectMarkers(cv_ptr->image, dictionary_, corners, ids, detector_params_, rejected);
+
+    // If no markers found, reset detection_active_ and return
+    if (ids.empty()) {
+      detection_active_ = false;
+      return;
+    }
+
+    // If we have camera intrinsics, we can estimate pose
+    if (has_camera_info_) {
+      std::vector<cv::Vec3d> rvecs, tvecs;
+      cv::aruco::estimatePoseSingleMarkers(
+        corners, marker_size_, camera_matrix_, dist_coeffs_, rvecs, tvecs);
+
+      // Publish pose depending on our logic
+      geometry_msgs::msg::PoseStamped pose_msg;
+      pose_msg.header = msg->header;  // Use the same timestamp/frame as the image
+
+      // Go through each detected marker
+      for (size_t i = 0; i < ids.size(); ++i) {
+        // Convert the rvec/tvec to a Pose
+        geometry_msgs::msg::Pose marker_pose = rvecTvecToPose(rvecs[i], tvecs[i]);
+
+        if (use_first_detection_) {
+          // Publish the first marker we detect and log it
+          pose_msg.pose = marker_pose;
+          // Only log if we haven't already
+          if (!detection_active_) {
+            RCLCPP_INFO(this->get_logger(),
+              "Detected ID=%d at tvec=[%.3f, %.3f, %.3f]",
+              ids[i], tvecs[i][0], tvecs[i][1], tvecs[i][2]);
+          }
+          detection_active_ = true; // We're now actively detecting
+          pose_pub_->publish(pose_msg);
+          return;
+        } else {
+          // Only publish if ID == dock_tag_id_
+          if (ids[i] == dock_tag_id_) {
+            pose_msg.pose = marker_pose;
+            // Only log if we haven't already
+            if (!detection_active_) {
+              RCLCPP_INFO(this->get_logger(),
+                "Detected ID=%d at tvec=[%.3f, %.3f, %.3f]",
+                ids[i], tvecs[i][0], tvecs[i][1], tvecs[i][2]);
+            }
+            detection_active_ = true;
+            pose_pub_->publish(pose_msg);
             return;
           }
-        } else {
-          // Use the first detection found
-          p.header = msg->header;
-          p.pose = msg->detections[0].pose.pose.pose;
-          publisher_->publish(p);
-          return;
         }
       }
     }
+  }
 
-    std::string dock_tag_family_;
-    int dock_tag_id_;
-    bool use_first_detection_;
-    rclcpp::Subscription<isaac_ros_apriltag_interfaces::msg::AprilTagDetectionArray>::SharedPtr subscription_;
-    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_;
+  // Called when camera info arrives (intrinsics, distortion)
+  void cameraInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
+  {
+    // Copy camera matrix
+    camera_matrix_ = cv::Mat::zeros(3, 3, CV_64F);
+    for (int i = 0; i < 9; ++i) {
+      camera_matrix_.at<double>(i / 3, i % 3) = msg->k[i];
+    }
+
+    // Copy distortion coefficients (assuming 5)
+    dist_coeffs_ = cv::Mat::zeros(1, 5, CV_64F);
+    for (int i = 0; i < 5; ++i) {
+      dist_coeffs_.at<double>(0, i) = msg->d[i];
+    }
+
+    has_camera_info_ = true;
+  }
+
+  // Utility: convert string -> OpenCV dictionary enum
+  int getDictionaryId(const std::string & dict_name)
+  {
+    // Basic example that maps "6x6_250" to cv::aruco::DICT_6X6_250
+    // Expand with more dictionary names as needed
+    if (dict_name == "6x6_250" || dict_name == "DICT_6X6_250") {
+      return cv::aruco::DICT_6X6_250;
+    }
+    RCLCPP_WARN(this->get_logger(), "Dictionary '%s' not recognized, defaulting to DICT_6X6_250",
+                dict_name.c_str());
+    return cv::aruco::DICT_6X6_250;
+  }
+
+  // Utility: convert rotation/translation vectors to a geometry_msgs pose
+  geometry_msgs::msg::Pose rvecTvecToPose(const cv::Vec3d &rvec, const cv::Vec3d &tvec)
+  {
+    cv::Mat R;
+    cv::Rodrigues(rvec, R);
+
+    // Convert rotation matrix -> quaternion
+    tf2::Matrix3x3 tf2_mat(
+      R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2),
+      R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2),
+      R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2)
+    );
+    tf2::Quaternion q;
+    tf2_mat.getRotation(q);
+
+    geometry_msgs::msg::Pose pose;
+    pose.position.x = tvec[0];
+    pose.position.y = tvec[1];
+    pose.position.z = tvec[2];
+    pose.orientation.x = q.x();
+    pose.orientation.y = q.y();
+    pose.orientation.z = q.z();
+    pose.orientation.w = q.w();
+
+    return pose;
+  }
+
+private:
+  // Parameters
+  std::string dictionary_id_;
+  double marker_size_;
+  bool use_first_detection_;
+  int dock_tag_id_;
+
+  // ArUco detection
+  cv::Ptr<cv::aruco::Dictionary> dictionary_;
+  cv::Ptr<cv::aruco::DetectorParameters> detector_params_;
+
+  // Camera intrinsics
+  bool has_camera_info_ = false;
+  cv::Mat camera_matrix_;
+  cv::Mat dist_coeffs_;
+
+  // ROS pubs/subs
+  image_transport::Subscriber image_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
 };
 
 int main(int argc, char * argv[])
