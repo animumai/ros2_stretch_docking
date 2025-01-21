@@ -62,11 +62,11 @@ def generate_launch_description():
             description='Launch RViz if set to True'),
         DeclareLaunchArgument(
             'image',
-            default_value='/camera/color/image_raw',
+            default_value='/camera_rotated/color/image_raw',
             description='Image topic'),
         DeclareLaunchArgument(
             'camera_info',
-            default_value='/camera/color/camera_info',
+            default_value='/camera_rotated/color/camera_info',
             description='Camera info topic'),
     ]
     namespace = LaunchConfiguration('namespace')

@@ -9,7 +9,7 @@ docking_server:
     max_retries: 3
     base_frame: "base_link"
     fixed_frame: "odom"
-    dock_backwards: true
+    dock_backwards: false
     dock_prestaging_tolerance: 0.5
 
     # Types of docks
@@ -18,12 +18,13 @@ docking_server:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
       staging_x_offset: 0.7
+      staging_yaw_offset: 3.14
       use_external_detection_pose: true
       use_battery_status: false # true
       use_stall_detection: false
 
       external_detection_timeout: 1.0
-      external_detection_translation_x: -0.06
+      external_detection_translation_x: -0.18
       external_detection_translation_y: 0.0
       external_detection_rotation_roll: -1.57
       external_detection_rotation_pitch: -1.57

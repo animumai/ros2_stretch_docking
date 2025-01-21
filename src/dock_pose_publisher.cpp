@@ -31,7 +31,7 @@ public:
     // Declare and read parameters
     dictionary_id_      = this->declare_parameter<std::string>("dictionary_id", "6x6_250");
     marker_size_        = this->declare_parameter<double>("marker_size", 0.11);  // 110 mm = 0.11 m
-    use_first_detection_ = this->declare_parameter<bool>("use_first_detection", true);
+    use_first_detection_ = this->declare_parameter<bool>("use_first_detection", false);
     dock_tag_id_        = this->declare_parameter<int>("dock_tag_id", 245);
 
     // Prepare ArUco objects
@@ -46,14 +46,14 @@ public:
     // (1) Image subscription (using image_transport for convenience)
     image_sub_ = image_transport::create_subscription(
       this, 
-      "/camera/color/image_raw",
+      "/camera_rotated/color/image_raw",
       std::bind(&DockPosePublisher::imageCallback, this, std::placeholders::_1),
       "raw"  // Transport type (raw, compressed, etc.)
     );
 
     // (2) Camera info subscription (needed for 3D pose estimation)
     camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-      "/camera/color/camera_info", 10,
+      "/camera_rotated/color/camera_info", 10,
       std::bind(&DockPosePublisher::cameraInfoCallback, this, std::placeholders::_1));
 
     RCLCPP_INFO(this->get_logger(), "DockPosePublisher node started");

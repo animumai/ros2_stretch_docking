@@ -47,15 +47,18 @@ set(dependencies
 add_executable(dock_pose_publisher src/dock_pose_publisher.cpp)
 ament_target_dependencies(dock_pose_publisher ${dependencies})
 
+add_executable(rotate_camera_node src/rotate_camera_node.cpp)
+ament_target_dependencies(rotate_camera_node ${dependencies})
+
 install(TARGETS
   dock_pose_publisher
+  rotate_camera_node
   DESTINATION lib/${PROJECT_NAME})
 
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
-  scripts/fp_dock_pose_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

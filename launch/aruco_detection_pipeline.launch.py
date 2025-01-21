@@ -14,12 +14,12 @@ def generate_launch_description():
         # Declare the same arguments here, with defaults (if desired)
         DeclareLaunchArgument(
             'image',
-            default_value='/camera/color/image_raw',
+            default_value='/camera_rotated/color/image_raw',
             description='Image topic to subscribe to'
         ),
         DeclareLaunchArgument(
             'camera_info',
-            default_value='/camera/color/camera_info',
+            default_value='/camera_rotated/color/camera_info',
             description='Camera info topic to subscribe to'
         ),
 
@@ -31,14 +31,21 @@ def generate_launch_description():
             parameters=[
                 {'dictionary_id': '6x6_250'},
                 {'marker_size': 0.11},
-                {'use_first_detection': True},
+                {'use_first_detection': False},
                 {'dock_tag_id': 245},
             ],
             # Here we remap the *hard-coded* topics in dock_pose_publisher.cpp
             # to the user-specified topics from the main launch file
             remappings=[
-                ('/camera/color/image_raw', image_topic),
-                ('/camera/color/camera_info', camera_info_topic),
+                ('/camera_rotated/color/image_raw', image_topic),
+                ('/camera_rotated/color/camera_info', camera_info_topic),
             ]
+        ),
+
+        Node(
+            package='ros2_stretch_docking',
+            executable='rotate_camera_node',
+            name='rotate_camera_node',
+            output='screen'
         ),
     ])
