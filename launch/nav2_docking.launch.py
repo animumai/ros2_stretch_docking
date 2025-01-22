@@ -39,7 +39,7 @@ def generate_launch_description():
                 {'map_yaml_file': ''},
                 {'dock_pose': [-2.5, 3.0, 0.0]},
                 {'staging_offset': [-0.7, 0.0]},
-                {'external_detection_offsets': [-0.65, 0.0, 0.0]},
+                {'external_detection_offsets': [-0.62, 0.0, 0.0]},
             ]
         ),
     ])

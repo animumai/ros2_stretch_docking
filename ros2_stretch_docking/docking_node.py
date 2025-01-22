@@ -47,9 +47,7 @@ class DockingNode(Node):
         # Create a timer to check "marker lost"
         self.lost_timer_ = self.create_timer(1.0, self.check_marker_lost)
 
-        self.get_logger().info('DockingNode started.')
-        # Optionally start docking right away
-        self.start_docking()
+        self.get_logger().info('Docking Node started.')
 
     def start_docking(self):
         if self.docking_in_progress:
@@ -97,72 +95,88 @@ class DockingNode(Node):
         return staging_pose
 
     def monitor_navigation_result(self):
-        if not self.docking_in_progress:
+        """
+        Monitor the navigation result. If successful, start visual servoing.
+        """
+        # Check if navigation task is still in progress
+        if not self.navigator.isTaskComplete():
+            self.get_logger().debug('Still navigating to staging pose...')
             return
 
+        # Once task is complete, get the result
         nav_result = self.navigator.getResult()
-        if nav_result is None:
-            # Still navigating
-            return
-        
-        # Compare nav_result to TaskResult
+        self.get_logger().info(f'Navigation result: {nav_result}')
+
         if nav_result == TaskResult.SUCCEEDED:
             self.get_logger().info('Arrived at staging pose. Starting visual servoing.')
             self.visual_servoing = True
         elif nav_result == TaskResult.FAILED:
-            self.get_logger().error('Navigation to staging failed. Aborting docking.')
-            self.docking_in_progress = False
+            self.get_logger().error('Navigation to staging pose failed. Resetting docking.')
+            self.reset_and_start_docking()
         elif nav_result == TaskResult.CANCELED:
-            self.get_logger().error('Navigation to staging canceled. Aborting docking.')
-            self.docking_in_progress = False
+            self.get_logger().error('Navigation to staging pose was canceled. Resetting docking.')
+            self.reset_and_start_docking()
 
-        # Done with the nav check
+        # Stop the timer since navigation is complete
         self.destroy_timer(self.monitor_timer)
 
     def aruco_pose_callback(self, msg: PoseStamped):
         """
         Called with the transformed pose (in base_link) from /detected_dock_pose.
-        If we're in visual_servoing mode, we servo to the marker.
+        Handles the visual servoing loop.
         """
-        # Update the time of last detection
         self.last_detection_time_ = self.get_clock().now()
 
         if not self.visual_servoing:
             return
 
-        desired_x = self.external_detection_offsets[0]
-        desired_z = 0.2 + self.external_detection_offsets[2]
-        tolerance = 0.02
+        # Desired offsets
+        desired_x = self.external_detection_offsets[0]  # Forward offset
+        desired_y = self.external_detection_offsets[1]        # Lateral offset
 
-        dx = msg.pose.position.x - desired_x
-        dz = msg.pose.position.z - desired_z
+        # Tolerances for docking
+        dx_tolerance = 0.05  # Forward tolerance (meters)
+        dy_tolerance = 0.05  # Lateral tolerance (meters)
 
+        # Compute errors
+        dx = msg.pose.position.x - desired_x  # Forward/backward error
+        dy = msg.pose.position.y - desired_y  # Left/right error
+
+        # Initialize velocities
         linear_speed = 0.0
         angular_speed = 0.0
 
-        # P-control on z
-        if abs(dz) > tolerance:
-            linear_speed = 0.1 * dz
-            linear_speed = max(min(linear_speed, 0.1), -0.1)
+        # Forward motion control
+        if abs(dx) > dx_tolerance:
+            linear_speed = 0.2 * dx  # P-controller
+            linear_speed = max(min(linear_speed, 0.1), -0.1)  # Clamp speed
 
-        # P-control on x
-        if abs(dx) > tolerance:
-            angular_speed = -0.5 * dx
-            angular_speed = max(min(angular_speed, 0.2), -0.2)
+        # Angular motion control
+        if abs(dy) > dy_tolerance:
+            angular_speed = -0.5 * dy  # P-controller for lateral correction
+            angular_speed = max(min(angular_speed, 0.2), -0.2)  # Clamp speed
 
-        twist = Twist()
-        twist.linear.x = linear_speed
-        twist.angular.z = angular_speed
-        self.cmd_vel_pub.publish(twist)
-
-        # If we're close enough, finish docking
-        if abs(dx) < tolerance and abs(dz) < tolerance:
-            self.get_logger().info('Docking complete.')
+        # Stop motion if within tolerances
+        if abs(dx) < dx_tolerance and abs(dy) < dy_tolerance:
+            self.get_logger().info('Docking complete. Stopping robot.')
             self.visual_servoing = False
             self.docking_in_progress = False
             # Stop the robot
             stop_twist = Twist()
             self.cmd_vel_pub.publish(stop_twist)
+            return
+
+        # Publish velocity command
+        twist = Twist()
+        twist.linear.x = linear_speed
+        twist.angular.z = angular_speed
+        self.cmd_vel_pub.publish(twist)
+
+        self.get_logger().debug(
+            f"Visual servoing - dx: {dx:.3f}, dy: {dy:.3f}, "
+            f"linear_speed: {linear_speed:.3f}, angular_speed: {angular_speed:.3f}"
+        )
+
 
     def check_marker_lost(self):
         """
@@ -209,6 +223,10 @@ class DockingNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = DockingNode()
+    
+    # Inmediately start the docking process
+    node.start_docking()
+
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
