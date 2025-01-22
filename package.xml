@@ -24,6 +24,9 @@
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
   <depend>tf2</depend>
+  <depend>apriltag_ros</depend>
+  <depend>apriltag_msgs</depend>
+  <depend>image_proc</depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>

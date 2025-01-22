@@ -20,6 +20,9 @@ find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(tf2 REQUIRED)
+find_package(apriltag_ros REQUIRED)
+find_package(apriltag_msgs REQUIRED)
+find_package(image_proc REQUIRED)
 
 # potentially replace with nav2_common, nav2_package()
 set(CMAKE_CXX_STANDARD 17)
@@ -42,6 +45,9 @@ set(dependencies
   image_transport
   OpenCV
   tf2
+  apriltag_ros
+  apriltag_msgs
+  image_proc
 )
 
 add_executable(dock_pose_publisher src/dock_pose_publisher.cpp)
@@ -50,9 +56,13 @@ ament_target_dependencies(dock_pose_publisher ${dependencies})
 add_executable(rotate_camera_node src/rotate_camera_node.cpp)
 ament_target_dependencies(rotate_camera_node ${dependencies})
 
+add_executable(detected_dock_pose_publisher src/detected_dock_pose_publisher.cpp)
+ament_target_dependencies(detected_dock_pose_publisher ${dependencies})
+
 install(TARGETS
   dock_pose_publisher
   rotate_camera_node
+  detected_dock_pose_publisher
   DESTINATION lib/${PROJECT_NAME})
 
 # Install Python modules
