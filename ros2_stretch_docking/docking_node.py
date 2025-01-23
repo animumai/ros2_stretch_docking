@@ -40,6 +40,7 @@ class DockingNode(Node):
         # Internal states
         self.docking_in_progress = False
         self.visual_servoing = False
+        self.first_time = True
 
         # Track last time marker was seen
         self.last_detection_time_ = None
@@ -54,7 +55,7 @@ class DockingNode(Node):
             self.get_logger().warn('Docking already in progress.')
             return
 
-        self.move_camera_down_45_and_rotate_180()
+        self.move_camera_down_60_and_rotate_180()
         self.docking_in_progress = True
 
         # (A) Compute staging pose in the map
@@ -129,14 +130,18 @@ class DockingNode(Node):
 
         if not self.visual_servoing:
             return
+        
+        if self.first_time is True:
+            self.move_arm_down()
+            self.first_time = False
 
         # Desired offsets
         desired_x = self.external_detection_offsets[0]  # Forward offset
-        desired_y = self.external_detection_offsets[1]        # Lateral offset
+        desired_y = self.external_detection_offsets[1]  # Lateral offset
 
         # Tolerances for docking
-        dx_tolerance = 0.05  # Forward tolerance (meters)
-        dy_tolerance = 0.05  # Lateral tolerance (meters)
+        dx_tolerance = 0.02  # Forward tolerance (meters)
+        dy_tolerance = 0.02  # Lateral tolerance (meters)
 
         # Compute errors
         dx = msg.pose.position.x - desired_x  # Forward/backward error
@@ -149,12 +154,12 @@ class DockingNode(Node):
         # Forward motion control
         if abs(dx) > dx_tolerance:
             linear_speed = 0.2 * dx  # P-controller
-            linear_speed = max(min(linear_speed, 0.1), -0.1)  # Clamp speed
+            linear_speed = max(min(linear_speed, 0.2), -0.2)  # Clamp speed
 
         # Angular motion control
         if abs(dy) > dy_tolerance:
-            angular_speed = -0.5 * dy  # P-controller for lateral correction
-            angular_speed = max(min(angular_speed, 0.2), -0.2)  # Clamp speed
+            angular_speed = -3 * dy  # P-controller for lateral correction
+            angular_speed = max(min(angular_speed, 0.7), -0.7)  # Clamp speed
 
         # Stop motion if within tolerances
         if abs(dx) < dx_tolerance and abs(dy) < dy_tolerance:
@@ -185,6 +190,7 @@ class DockingNode(Node):
         then re-invoke the Nav2 navigation to staging.
         """
         if not self.visual_servoing:
+            self.first_time = True
             return  # Not actively servoing
 
         # If we've never seen the marker, last_detection_time_ is None => lost
@@ -208,17 +214,29 @@ class DockingNode(Node):
         # Re-invoke start_docking to go to the staging pose again
         self.start_docking()
 
-    def move_camera_down_45_and_rotate_180(self):
+    def move_camera_down_60_and_rotate_180(self):
         msg = Float64MultiArray()
         # Example angles
         msg.data = [
             0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0,
-            -3.14159, -0.7854,
+            -3.14159, -1.0472,
             0.0, 0.0
         ]
         self.joint_pose_pub.publish(msg)
-        self.get_logger().info('Moved camera to look behind (down 45°, rotate 180°).')
+        self.get_logger().info('Moved camera to look behind (down 60°, rotate 180°).')
+
+    def move_arm_down(self):
+        msg = Float64MultiArray()
+        # Example angles
+        msg.data = [
+            0.0, 0.0, 0.0, 0.09,
+            -0.1, 0.0, 0.0, -3.14159,
+            -3.14159, -1.0472,
+            0.0, 0.0
+        ]
+        self.joint_pose_pub.publish(msg)
+        self.get_logger().info('Moved arm down.')
 
 def main(args=None):
     rclpy.init(args=args)
