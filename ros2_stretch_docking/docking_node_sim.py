@@ -4,8 +4,6 @@ from geometry_msgs.msg import Twist, PoseStamped
 from std_msgs.msg import Float64MultiArray
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
-from std_srvs.srv import Trigger
-
 import math
 from math import sin, cos
 
@@ -18,7 +16,7 @@ class DockingNode(Node):
         self.declare_parameter('dock_pose', [0.0, 0.0, 0.0])  # [x, y, theta] in map
         self.declare_parameter('staging_offset', [-0.7, 0.0])
         self.declare_parameter('external_detection_offsets', [0.0, 0.0, 0.0])
-
+        
         self.map_yaml_file = self.get_parameter('map_yaml_file').value
         self.dock_pose_xytheta = self.get_parameter('dock_pose').value
         self.staging_offset = self.get_parameter('staging_offset').value
@@ -50,27 +48,7 @@ class DockingNode(Node):
         # Create a timer to check "marker lost"
         self.lost_timer_ = self.create_timer(1.0, self.check_marker_lost)
 
-        # Create a service client for /activate_streaming_position
-        self.activate_streaming_client = self.create_client(Trigger, '/activate_streaming_position')
-        while not self.activate_streaming_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Waiting for /activate_streaming_position service...')
-
         self.get_logger().info('Docking Node started.')
-
-    def call_activate_streaming_position(self):
-        """
-        Calls the /activate_streaming_position Trigger service.
-        """
-        request = Trigger.Request()
-        future = self.activate_streaming_client.call_async(request)
-        rclpy.spin_until_future_complete(self, future)
-        if future.result() is not None:
-            if future.result().success:
-                self.get_logger().info('Activated streaming position.')
-            else:
-                self.get_logger().warn(f"Service call failed: {future.result().message}")
-        else:
-            self.get_logger().error('Service call to /activate_streaming_position failed.')
 
     def start_docking(self):
         if self.docking_in_progress:
@@ -180,7 +158,7 @@ class DockingNode(Node):
 
         # Angular motion control
         if abs(dy) > dy_tolerance:
-            angular_speed = -3.0 * dy  # P-controller for lateral correction
+            angular_speed = -3 * dy  # P-controller for lateral correction
             angular_speed = max(min(angular_speed, 0.7), -0.7)  # Clamp speed
 
         # Stop motion if within tolerances
@@ -203,6 +181,7 @@ class DockingNode(Node):
             f"Visual servoing - dx: {dx:.3f}, dy: {dy:.3f}, "
             f"linear_speed: {linear_speed:.3f}, angular_speed: {angular_speed:.3f}"
         )
+
 
     def check_marker_lost(self):
         """
@@ -244,8 +223,6 @@ class DockingNode(Node):
             -3.14159, -1.0472,
             0.0, 0.0
         ]
-        # Call service before publishing
-        self.call_activate_streaming_position()
         self.joint_pose_pub.publish(msg)
         self.get_logger().info('Moved camera to look behind (down 60°, rotate 180°).')
 
@@ -253,12 +230,11 @@ class DockingNode(Node):
         msg = Float64MultiArray()
         # Example angles
         msg.data = [
-            0.12, 0.0, 0.0, 0.0,
-            0.0, -3.14159, -1.0472,
-            0.0, 0.0, 0.0
+            0.0, 0.0, 0.0, 0.09,
+            -0.1, 0.0, 0.0, -3.14159,
+            -3.14159, -1.0472,
+            0.0, 0.0
         ]
-        # Call service before publishing
-        self.call_activate_streaming_position()
         self.joint_pose_pub.publish(msg)
         self.get_logger().info('Moved arm down.')
 
@@ -266,7 +242,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = DockingNode()
     
-    # Immediately start the docking process
+    # Inmediately start the docking process
     node.start_docking()
 
     rclpy.spin(node)
