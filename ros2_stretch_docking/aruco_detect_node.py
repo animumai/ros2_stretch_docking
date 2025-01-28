@@ -45,8 +45,8 @@ class ArucoDetectNode(Node):
         self.dist_coeffs = None
 
         # ArUco dictionaries
-        self.aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
-        self.aruco_params = cv2.aruco.DetectorParameters()
+        self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
+        self.aruco_params = cv2.aruco.DetectorParameters_create()
 
         self.get_logger().info('ArucoDetectNode started.')
 
@@ -58,26 +58,6 @@ class ArucoDetectNode(Node):
         self.destroy_subscription(self.subscription_camera_info)
         self.subscription_camera_info = None
         self.get_logger().info('Camera info received and stored.')
-
-    def estimatePoseSingleMarkers(corners, marker_size, mtx, distortion, use_pnp=cv2.SOLVEPNP_IPPE_SQUARE):
-        # Estimates the rotation and translation vectors for each detected marker.
-
-        marker_points = np.array([
-            [-marker_size / 2,  marker_size / 2,  0],
-            [ marker_size / 2,  marker_size / 2,  0],
-            [ marker_size / 2, -marker_size / 2,  0],
-            [-marker_size / 2, -marker_size / 2,  0]
-        ], dtype=np.float32)
-
-        trash = []
-        rvecs = []
-        tvecs = []
-        for c in corners:
-            nada, R_vec, t = cv2.solvePnP(marker_points, c, mtx, distortion, False, use_pnp)
-            rvecs.append(R_vec)
-            tvecs.append(t)
-            trash.append(nada)
-        return rvecs, tvecs, trash
 
     def image_callback(self, img_msg):
         if self.camera_matrix is None or self.dist_coeffs is None:
@@ -102,7 +82,7 @@ class ArucoDetectNode(Node):
 
         idx = list(ids).index(self.marker_id)
         # Estimate the pose of the single marker
-        rvecs, tvecs, _ = self.estimatePoseSingleMarkers(
+        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
             corners[idx],
             self.marker_size,
             self.camera_matrix,

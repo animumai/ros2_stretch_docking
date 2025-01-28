@@ -9,7 +9,7 @@ from math import sin, cos
 
 class DockingNode(Node):
     def __init__(self):
-        super().__init__('docking_node')
+        super().__init__('docking_node_sim')
 
         # Declare parameters
         self.declare_parameter('map_yaml_file', '')

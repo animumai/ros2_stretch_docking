@@ -30,6 +30,7 @@ setup(
             # These console scripts can be run via `ros2 run ros2_stretch_docking aruco_detect_node`
             'aruco_detect_node = ros2_stretch_docking.aruco_detect_node:main',
             'docking_node = ros2_stretch_docking.docking_node:main',
+            'docking_node_sim = ros2_stretch_docking.docking_node_sim:main',
         ],
     },
 )
