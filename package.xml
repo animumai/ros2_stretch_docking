@@ -23,7 +23,7 @@
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
-  <depend>opencv</depend>
+  <!-- <depend>opencv</depend> -->
   <depend>std_srvs</depend>
   <depend>nav2_simple_commander</depend>
 
