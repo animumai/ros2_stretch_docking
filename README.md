@@ -4,6 +4,16 @@ This package provides a docking solution for a Stretch robot (real or simulated)
 
 ---
 
+## Installation
+
+Follow the same installation instructions as for the Stretch [Nav2](https://github.com/animumai/stretch_nav2_offloaded) package with the addition of installing the latest version of `opencv-contrib-python`:
+```bash
+pip install opencv-contrib-python
+```
+
+
+---
+
 ## Docking Procedure
 
 1. **Initialization**: The robot pitches its camera down, looks backward, and stows its arm. Nav2 is then used to navigate to a staging position near the docking station.
