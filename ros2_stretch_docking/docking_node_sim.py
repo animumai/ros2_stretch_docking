@@ -55,7 +55,7 @@ class DockingNode(Node):
             self.get_logger().warn('Docking already in progress.')
             return
 
-        self.move_camera_down_60_and_rotate_180()
+        self.move_arm_up()
         self.docking_in_progress = True
 
         # (A) Compute staging pose in the map
@@ -109,8 +109,10 @@ class DockingNode(Node):
         self.get_logger().info(f'Navigation result: {nav_result}')
 
         if nav_result == TaskResult.SUCCEEDED:
-            self.get_logger().info('Arrived at staging pose. Starting visual servoing.')
-            self.visual_servoing = True
+            self.get_logger().info('Arrived at staging pose. Prepared for visual servoing.')
+            self.move_camera_down_60_and_rotate_180()
+            # Create a one-shot timer that fires in 0.5s
+            self.servo_delay_timer = self.create_timer(0.5, self.enable_visual_servoing)
         elif nav_result == TaskResult.FAILED:
             self.get_logger().error('Navigation to staging pose failed. Resetting docking.')
             self.reset_and_start_docking()
@@ -120,6 +122,12 @@ class DockingNode(Node):
 
         # Stop the timer since navigation is complete
         self.destroy_timer(self.monitor_timer)
+
+    def enable_visual_servoing(self):
+        # Destroy the servo timer right away so it doesn't repeat
+        self.destroy_timer(self.servo_delay_timer)
+        self.get_logger().info('Camera moved (0.5s delay). Starting visual servoing now.')
+        self.visual_servoing = True
 
     def aruco_pose_callback(self, msg: PoseStamped):
         """
@@ -225,6 +233,18 @@ class DockingNode(Node):
         ]
         self.joint_pose_pub.publish(msg)
         self.get_logger().info('Moved camera to look behind (down 60°, rotate 180°).')
+
+    def move_arm_up(self):
+        msg = Float64MultiArray()
+        # Example angles
+        msg.data = [
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0,
+            0.0, 0.0
+        ]
+        self.joint_pose_pub.publish(msg)
+        self.get_logger().info('Moved arm up.')
 
     def move_arm_down(self):
         msg = Float64MultiArray()
