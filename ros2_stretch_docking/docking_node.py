@@ -253,7 +253,7 @@ class DockingNode(Node):
         msg = Float64MultiArray()
         # Example angles
         msg.data = [
-            0.12, 0.0, 0.0, 0.0,
+            0.15, 0.0, 0.0, 0.0,
             0.0, -3.14159, -1.0472,
             0.0, 0.0, 0.0
         ]

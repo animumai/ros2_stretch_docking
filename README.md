@@ -73,6 +73,10 @@ Before launching any docking-related files, ensure the robot and Nav2 are set up
    ros2 launch stretch_nav2_offloaded navigation.launch.py map:=${HELLO_FLEET_PATH}/maps/<map_name>.yaml
    ```
 4. **Set the 2D Pose Estimate** in Rviz.
+5. **Start docking by launching**:
+   ``` bash
+   ros2 launch ros2_stretch_docking nav2_docking.launch.py
+   ```
 
 ### For the Simulator
 1. **Launch the Simulation**:
@@ -84,6 +88,10 @@ Before launching any docking-related files, ensure the robot and Nav2 are set up
    ros2 launch stretch_nav2_offloaded navigation_sim.launch.py map:=src/ros2_simulator_stretch/maps/<map_name>.yaml
    ```
 3. **Set the 2D Pose Estimate** in Rviz.
+4. **Start docking by launching**:
+   ``` bash
+   ros2 launch ros2_stretch_docking nav2_docking_sim.launch.py
+   ```
 
 ---
 
