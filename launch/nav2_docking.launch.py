@@ -37,9 +37,9 @@ def generate_launch_description():
             parameters=[
                 # Keep or change these as needed
                 {'map_yaml_file': ''},
-                {'dock_pose': [-2, 0.6, 0.0]},
+                {'dock_pose': [-2, 0.55, 0.0]},
                 {'staging_offset': [-0.7, 0.0]},
-                {'external_detection_offsets': [-0.64, 0.04, 0.04]},
+                {'external_detection_offsets': [-0.41, 0.0, -0.15]},
             ]
         ),
     ])

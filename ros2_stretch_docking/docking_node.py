@@ -26,7 +26,7 @@ class DockingNode(Node):
         self.external_detection_offsets = self.get_parameter('external_detection_offsets').value
 
         # Publishers
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/stretch/cmd_vel', 10)
         self.joint_pose_pub = self.create_publisher(Float64MultiArray, '/joint_pose_cmd', 10)
 
         # Subscription to the *base_link* pose from ArUco detection
@@ -174,8 +174,8 @@ class DockingNode(Node):
         desired_y = self.external_detection_offsets[1]  # Lateral offset
 
         # Tolerances for docking
-        dx_tolerance = 0.02  # Forward tolerance (meters)
-        dy_tolerance = 0.02  # Lateral tolerance (meters)
+        dx_tolerance = 0.01  # Forward tolerance (meters)
+        dy_tolerance = 0.01  # Lateral tolerance (meters)
 
         # Compute errors
         dx = msg.pose.position.x - desired_x  # Forward/backward error
@@ -187,13 +187,13 @@ class DockingNode(Node):
 
         # Forward motion control
         if abs(dx) > dx_tolerance:
-            linear_speed = 0.2 * dx  # P-controller
-            linear_speed = max(min(linear_speed, 0.2), -0.2)  # Clamp speed
+            linear_speed = 0.5 * dx  # P-controller
+            linear_speed = max(min(linear_speed, 0.25), -0.25)  # Clamp speed
 
         # Angular motion control
         if abs(dy) > dy_tolerance:
-            angular_speed = -3.0 * dy  # P-controller for lateral correction
-            angular_speed = max(min(angular_speed, 0.7), -0.7)  # Clamp speed
+            angular_speed = -5.0 * dy  # P-controller for lateral correction
+            angular_speed = max(min(angular_speed, 2.5), -2.5)  # Clamp speed
 
         # Stop motion if within tolerances
         if abs(dx) < dx_tolerance and abs(dy) < dy_tolerance:
