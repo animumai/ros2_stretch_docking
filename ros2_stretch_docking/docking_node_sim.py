@@ -4,8 +4,11 @@ from geometry_msgs.msg import Twist, PoseStamped
 from std_msgs.msg import Float64MultiArray
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
+from std_srvs.srv import Trigger
+
 import math
 from math import sin, cos
+import time
 
 class DockingNode(Node):
     def __init__(self):
@@ -48,7 +51,30 @@ class DockingNode(Node):
         # Create a timer to check "marker lost"
         self.lost_timer_ = self.create_timer(1.0, self.check_marker_lost)
 
+        # Create a service client for /activate_streaming_position
+        self.activate_streaming_client = self.create_client(Trigger, '/activate_streaming_position')
+        while not self.activate_streaming_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Waiting for /activate_streaming_position service...')
+
         self.get_logger().info('Docking Node started.')
+
+    def call_activate_streaming_position(self):
+        """
+        Calls the /activate_streaming_position Trigger service.
+        """
+        request = Trigger.Request()
+        future = self.activate_streaming_client.call_async(request)
+        future.add_done_callback(self.activate_streaming_done_callback)
+
+    def activate_streaming_done_callback(self, future):
+        try:
+            result = future.result()
+            if result.success:
+                self.get_logger().info('Activated streaming position.')
+            else:
+                self.get_logger().warn(f"Service call failed: {result.message}")
+        except Exception as e:
+            self.get_logger().error(f'Service call failed: {str(e)}')
 
     def start_docking(self):
         if self.docking_in_progress:
@@ -112,7 +138,7 @@ class DockingNode(Node):
             self.get_logger().info('Arrived at staging pose. Prepared for visual servoing.')
             self.move_camera_down_60_and_rotate_180()
             # Create a one-shot timer that fires in 0.5s
-            self.servo_delay_timer = self.create_timer(0.5, self.enable_visual_servoing)
+            self.servo_delay_timer = self.create_timer(1.0, self.enable_visual_servoing)
         elif nav_result == TaskResult.FAILED:
             self.get_logger().error('Navigation to staging pose failed. Resetting docking.')
             self.reset_and_start_docking()
@@ -148,8 +174,8 @@ class DockingNode(Node):
         desired_y = self.external_detection_offsets[1]  # Lateral offset
 
         # Tolerances for docking
-        dx_tolerance = 0.02  # Forward tolerance (meters)
-        dy_tolerance = 0.02  # Lateral tolerance (meters)
+        dx_tolerance = 0.01  # Forward tolerance (meters)
+        dy_tolerance = 0.01  # Lateral tolerance (meters)
 
         # Compute errors
         dx = msg.pose.position.x - desired_x  # Forward/backward error
@@ -161,13 +187,13 @@ class DockingNode(Node):
 
         # Forward motion control
         if abs(dx) > dx_tolerance:
-            linear_speed = 0.2 * dx  # P-controller
-            linear_speed = max(min(linear_speed, 0.2), -0.2)  # Clamp speed
+            linear_speed = 0.5 * dx  # P-controller
+            linear_speed = max(min(linear_speed, 0.25), -0.25)  # Clamp speed
 
         # Angular motion control
         if abs(dy) > dy_tolerance:
-            angular_speed = -3 * dy  # P-controller for lateral correction
-            angular_speed = max(min(angular_speed, 0.7), -0.7)  # Clamp speed
+            angular_speed = -5.0 * dy  # P-controller for lateral correction
+            angular_speed = max(min(angular_speed, 2.5), -2.5)  # Clamp speed
 
         # Stop motion if within tolerances
         if abs(dx) < dx_tolerance and abs(dy) < dy_tolerance:
@@ -226,11 +252,11 @@ class DockingNode(Node):
         msg = Float64MultiArray()
         # Example angles
         msg.data = [
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-            -3.14159, -1.0472,
-            0.0, 0.0
+            0.0, 0.2, 3.14159, 0.0, 0.0, -3.14159, -1.0472, 0.0, 0.0, 0.0
         ]
+        # Call service before publishing
+        self.call_activate_streaming_position()
+        time.sleep(0.5)
         self.joint_pose_pub.publish(msg)
         self.get_logger().info('Moved camera to look behind (down 60°, rotate 180°).')
 
@@ -238,11 +264,11 @@ class DockingNode(Node):
         msg = Float64MultiArray()
         # Example angles
         msg.data = [
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0,
-            0.0, 0.0
+            0.0, 0.2, 3.14159, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         ]
+        # Call service before publishing
+        self.call_activate_streaming_position()
+        time.sleep(0.5)
         self.joint_pose_pub.publish(msg)
         self.get_logger().info('Moved arm up.')
 
@@ -250,11 +276,11 @@ class DockingNode(Node):
         msg = Float64MultiArray()
         # Example angles
         msg.data = [
-            0.0, 0.0, 0.0, 0.09,
-            -0.1, 0.0, 0.0, -3.14159,
-            -3.14159, -1.0472,
-            0.0, 0.0
+            0.15, 0.0, 0.0, 0.0, 0.0, -3.14159, -1.0472, 0.0, 0.0, 0.0
         ]
+        # Call service before publishing
+        self.call_activate_streaming_position()
+        time.sleep(0.5)
         self.joint_pose_pub.publish(msg)
         self.get_logger().info('Moved arm down.')
 
