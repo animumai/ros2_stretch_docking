@@ -19,7 +19,7 @@ class DockingNode(Node):
         self.declare_parameter('dock_pose', [0.0, 0.0, 0.0])  # [x, y, theta] in map
         self.declare_parameter('staging_offset', [-0.7, 0.0])
         self.declare_parameter('external_detection_offsets', [0.0, 0.0, 0.0])
-
+        
         self.map_yaml_file = self.get_parameter('map_yaml_file').value
         self.dock_pose_xytheta = self.get_parameter('dock_pose').value
         self.staging_offset = self.get_parameter('staging_offset').value

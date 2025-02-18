@@ -138,7 +138,7 @@ class DockingNode(Node):
             self.get_logger().info('Arrived at staging pose. Prepared for visual servoing.')
             self.move_camera_down_60_and_rotate_180()
             # Create a one-shot timer that fires in 0.5s
-            self.servo_delay_timer = self.create_timer(1.0, self.enable_visual_servoing)
+            self.servo_delay_timer = self.create_timer(2.0, self.enable_visual_servoing)
         elif nav_result == TaskResult.FAILED:
             self.get_logger().error('Navigation to staging pose failed. Resetting docking.')
             self.reset_and_start_docking()
@@ -216,7 +216,6 @@ class DockingNode(Node):
             f"linear_speed: {linear_speed:.3f}, angular_speed: {angular_speed:.3f}"
         )
 
-
     def check_marker_lost(self):
         """
         Called every second by lost_timer_.
@@ -288,7 +287,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = DockingNode()
     
-    # Inmediately start the docking process
+    # Immediately start the docking process
     node.start_docking()
 
     rclpy.spin(node)
