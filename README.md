@@ -64,6 +64,7 @@ Before launching any docking-related files, ensure the robot and Nav2 are set up
 
    # Start the Stretch Camera Node
    ros2 launch stretch_core d435i_basic.launch.py 
+   # ros2 launch stretch_core multi_camera_demo.launch.py
    ```
 3. **Launch Nav2**:
    ```bash
