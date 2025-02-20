@@ -62,11 +62,8 @@ Before launching any docking-related files, ensure the robot and Nav2 are set up
    # Free up Stretch processes
    stretch_free_robot_process.py
 
-   # Terminal 1: Start the Stretch Driver Node
-   ros2 launch stretch_core stretch_driver.launch.py mode:=navigation broadcast_odom_tf:=True
-
-   # Terminal 2: Start LiDAR
-   ros2 launch stretch_core rplidar.launch.py
+   # Start the Stretch Camera Node
+   ros2 launch stretch_core d435i_basic.launch.py 
    ```
 3. **Launch Nav2**:
    ```bash

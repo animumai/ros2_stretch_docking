@@ -187,7 +187,7 @@ class DockingNode(Node):
 
         # Forward motion control
         if abs(dx) > dx_tolerance:
-            linear_speed = 0.5 * dx  # P-controller
+            linear_speed = 1.0 * dx  # P-controller
             linear_speed = max(min(linear_speed, 0.25), -0.25)  # Clamp speed
 
         # Angular motion control
