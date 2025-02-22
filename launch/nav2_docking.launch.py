@@ -22,6 +22,8 @@ def generate_launch_description():
             executable='aruco_detect_node',
             name='aruco_detect_node',
             output='screen',
+            respawn=True,  # <--- add this!
+            emulate_tty=True,
             parameters=[{
                 'marker_id': 245,
                 'marker_size_meters': 0.11
@@ -34,10 +36,12 @@ def generate_launch_description():
             executable='docking_node',
             name='docking_node',
             output='screen',
+            respawn=True,  # <--- add this!
+            emulate_tty=True,
             parameters=[
                 # Keep or change these as needed
                 {'map_yaml_file': ''},
-                {'dock_pose': [-2, 0.6, 0.0]},
+                {'dock_pose': [-2, 0.52, 0.0]},
                 {'staging_offset': [-0.7, 0.0]},
                 {'external_detection_offsets': [-0.4, 0.0, -0.16]},
             ]
